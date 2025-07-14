@@ -5,14 +5,25 @@ Auxiliary folder contains scripts to create the required data for create_trainin
 
 
 snow_SVM/
+
 │
+
 ├── auxiliary/
-│   ├── altitude_mask_udf.py                      
+
+│   ├── altitude_mask_udf.py 
+
 │   ├── aspect_udf.py
+
 │   ├── distance_udf.py
+
 │   ├── scale_distance_udf.py
+
 │   ├── slope_udf.py
+
 │   ├── cloud_water_mask.ipynb
+
 │   ├── distance_index.ipynb
+
 │   ├── indices.ipynb
+
 │   ├── solar_angle.ipynb
