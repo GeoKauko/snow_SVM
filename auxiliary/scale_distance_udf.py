@@ -5,26 +5,39 @@ import numpy as np
 def apply_datacube(cube: XarrayDataCube, context: dict) -> XarrayDataCube:
     data = cube.get_array()
 
-    if "t" in data.dims:
-        for t in data["t"]:
-            time_slice = data.sel(t=t)
+    # Extract distance index and valid mask
+    distance = data.sel(bands="snow_sure") 
+    # valid = data.sel(bands="valid_mask")
 
-            min_val = time_slice.min(skipna=True)
-            max_val = time_slice.max(skipna=True)
-            range_val = max_val - min_val
-            safe_range = range_val if range_val > 0 else 1.0
+    time_steps = data.coords["t"].values
+    results = []
 
-            scaled = ((time_slice - min_val) / safe_range) * 254.0
-            scaled = scaled.where(~xr.ufuncs.isnan(time_slice), 255.0)
+    for t in time_steps:
+        dist_t = distance.sel(t=t)
+        # valid_t = valid.sel(t=t).data == 1
 
-            data.loc[dict(t=t)] = scaled.round().astype(np.uint8)
-    else:
-        min_val = data.min(skipna=True)
-        max_val = data.max(skipna=True)
+        dist_data = dist_t.data
+        # dist_data[~valid_t] = np.nan 
+
+        min_val = np.nanmin(dist_data)
+        max_val = np.nanmax(dist_data)
         range_val = max_val - min_val
         safe_range = range_val if range_val > 0 else 1.0
 
-        scaled = ((data - min_val) / safe_range) * 254.0
-        data = scaled.where(~xr.ufuncs.isnan(data), 255.0).round().astype(np.uint8)
+        scaled = ((dist_data - min_val) / safe_range) * 254.0
+        scaled = np.where(np.isnan(dist_data), 255.0, scaled)
 
-    return XarrayDataCube(data)
+        da = xr.DataArray(
+            scaled[np.newaxis, np.newaxis, :, :].round().astype(np.float32),
+            coords={
+                "t": [t],
+                "bands": ["scaled_distance"],
+                "y": data.coords["y"],
+                "x": data.coords["x"]
+            },
+            dims=["t", "bands", "y", "x"]
+        )
+        results.append(da)
+
+    output = xr.concat(results, dim="t")
+    return XarrayDataCube(output)
